@@ -1,129 +1,131 @@
 'use strict';
 
 // ═══════════════════════════════════════
-// DIFFICULTY GROUPS
-// Controls the point multiplier per table.
+// HELPERS — derived from CONFIG
 // ═══════════════════════════════════════
-const DIFFICULTY = {
-  easy:   { tables: [2, 5, 10], multiplier: 1 },
-  medium: { tables: [3, 4, 6, 11, 12], multiplier: 2 },
-  hard:   { tables: [7, 8, 9], multiplier: 3 },
-};
 
-function getTableMultiplier(table) {
-  for (const d of Object.values(DIFFICULTY)) {
-    if (d.tables.includes(table)) return d.multiplier;
-  }
-  return 1;
-}
-
-function getTableDifficultyName(table) {
-  for (const [name, d] of Object.entries(DIFFICULTY)) {
-    if (d.tables.includes(table)) return name;
-  }
-  return 'easy';
+function getDifficulty(table) {
+  return CONFIG.difficulties.find(d => d.tables.includes(table)) || CONFIG.difficulties[0];
 }
 
 
 // ═══════════════════════════════════════
 // STATE
-// Everything the app needs while running.
-// Wiped when the page refreshes — long-term
-// data lives in localStorage instead.
 // ═══════════════════════════════════════
 const state = {
-  selectedTables: [],
-  mode: 'hard',             // 'easy' or 'hard'
+  selectedTables:  [],
+  mode:            'hard',       // 'easy' | 'hard'
 
-  deck: [],                 // questions still to be answered correctly
-  masteredSet: new Set(),   // question keys answered correctly this session
+  deck:            [],           // questions yet to be answered correctly
+  masteredSet:     new Set(),    // question keys answered correctly this session
 
   currentQuestion: null,
   sessionTotal:    0,
   sessionCorrect:  0,
   sessionStreak:   0,
-  locked:          false,   // prevents double-submission while feedback shows
+  sessionPoints:   0,            // points earned in the current session
+  sessionSaved:    false,        // guard against saving the same session twice
+  sessionTables:   new Set(),    // which tables were actually answered this session
+
+  locked:          false,        // prevents double-submission during feedback
+  pendingReward:   null,         // a CONFIG.rewardTiers entry waiting to be shown
 };
 
 
 // ═══════════════════════════════════════
-// PERSISTENCE  (saved on the device)
+// PERSISTENCE
 // ═══════════════════════════════════════
 const KEYS = {
-  total:   'tt_total',
-  correct: 'tt_correct',
-  best:    'tt_best',
-  points:  'tt_points',
-  mastery: 'tt_mastery',  // JSON array of mastered table numbers
+  name:     'tt_name',
+  total:    'tt_total',
+  correct:  'tt_correct',
+  best:     'tt_best',
+  points:   'tt_points',
+  mastery:  'tt_mastery',   // JSON array of mastered table numbers
+  sessions: 'tt_sessions',  // JSON array of past session objects
+  rewards:  'tt_rewards',   // JSON array of unlocked tier IDs
 };
 
 function loadLifetime() {
   return {
-    total:   parseInt(localStorage.getItem(KEYS.total)   || '0', 10),
-    correct: parseInt(localStorage.getItem(KEYS.correct) || '0', 10),
-    best:    parseInt(localStorage.getItem(KEYS.best)    || '0', 10),
-    points:  parseInt(localStorage.getItem(KEYS.points)  || '0', 10),
-    mastery: JSON.parse(localStorage.getItem(KEYS.mastery) || '[]'),
+    total:    parseInt(localStorage.getItem(KEYS.total)   || '0', 10),
+    correct:  parseInt(localStorage.getItem(KEYS.correct) || '0', 10),
+    best:     parseInt(localStorage.getItem(KEYS.best)    || '0', 10),
+    points:   parseInt(localStorage.getItem(KEYS.points)  || '0', 10),
+    mastery:  JSON.parse(localStorage.getItem(KEYS.mastery)  || '[]'),
+    sessions: JSON.parse(localStorage.getItem(KEYS.sessions) || '[]'),
+    rewards:  JSON.parse(localStorage.getItem(KEYS.rewards)  || '[]'),
   };
 }
 
 function saveLifetime(data) {
-  localStorage.setItem(KEYS.total,   data.total);
-  localStorage.setItem(KEYS.correct, data.correct);
-  localStorage.setItem(KEYS.best,    data.best);
-  localStorage.setItem(KEYS.points,  data.points);
-  localStorage.setItem(KEYS.mastery, JSON.stringify(data.mastery));
+  localStorage.setItem(KEYS.total,    data.total);
+  localStorage.setItem(KEYS.correct,  data.correct);
+  localStorage.setItem(KEYS.best,     data.best);
+  localStorage.setItem(KEYS.points,   data.points);
+  localStorage.setItem(KEYS.mastery,  JSON.stringify(data.mastery));
+  localStorage.setItem(KEYS.sessions, JSON.stringify(data.sessions));
+  localStorage.setItem(KEYS.rewards,  JSON.stringify(data.rewards));
+}
+
+function getPlayerName() {
+  return localStorage.getItem(KEYS.name) || '';
+}
+
+function savePlayerName(name) {
+  localStorage.setItem(KEYS.name, name.trim());
 }
 
 
 // ═══════════════════════════════════════
-// POINTS CALCULATION
-//
-// Each correct answer earns:
-//   table difficulty (1/2/3)
-//   × mode bonus (Hard=2, Easy=1)
-//   × mastery penalty (already has star = 0.5)
-//
-// Example maximums:
-//   7s Hard mode, no star yet  → 3×2×1 = 6 pts
-//   2s Easy mode, already done → 1×1×0.5 → 1 pt (minimum)
+// SESSION SAVING
+// Called when a session ends (back button or deck complete).
+// Saves to history only if at least one question was answered.
 // ═══════════════════════════════════════
-function calculatePoints(table) {
-  const diffMultiplier   = getTableMultiplier(table);
-  const modeMultiplier   = state.mode === 'hard' ? 2 : 1;
-  const { mastery }      = loadLifetime();
-  const masteryPenalty   = mastery.includes(table) ? 0.5 : 1;
-  return Math.max(1, Math.round(diffMultiplier * modeMultiplier * masteryPenalty));
+function saveSession() {
+  if (state.sessionSaved || state.sessionTotal === 0) return;
+  state.sessionSaved = true;
+
+  const lifetime = loadLifetime();
+  const session  = {
+    date:     new Date().toISOString().slice(0, 10),
+    points:   state.sessionPoints,
+    tables:   [...state.sessionTables].sort((a, b) => a - b),
+    answered: state.sessionTotal,
+    correct:  state.sessionCorrect,
+  };
+
+  // Keep only the most recent N sessions
+  lifetime.sessions.unshift(session);
+  if (lifetime.sessions.length > CONFIG.sessionHistoryLimit) {
+    lifetime.sessions = lifetime.sessions.slice(0, CONFIG.sessionHistoryLimit);
+  }
+
+  saveLifetime(lifetime);
 }
 
 
 // ═══════════════════════════════════════
-// DECK BUILDING
-// Creates one question per multiplier (1–12)
-// for each selected table, then shuffles.
+// REWARD TIER CHECKING
+// Returns the first tier that was just crossed (previous < threshold <= new).
+// Returns null if no new tier was crossed.
 // ═══════════════════════════════════════
-function buildDeck() {
-  const questions = [];
-  for (const table of state.selectedTables) {
-    for (let mult = 1; mult <= 12; mult++) {
-      questions.push({
-        a:      table,
-        b:      mult,
-        answer: table * mult,
-        key:    `${table}x${mult}`,
-      });
+function checkNewReward(previousPoints, newPoints) {
+  const { rewards } = loadLifetime();
+  for (const tier of CONFIG.rewardTiers) {
+    if (!rewards.includes(tier.id) && previousPoints < tier.pointsRequired && newPoints >= tier.pointsRequired) {
+      return tier;
     }
   }
-  return shuffleArray(questions);
+  return null;
 }
 
-function shuffleArray(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+function unlockReward(tier) {
+  const lifetime = loadLifetime();
+  if (!lifetime.rewards.includes(tier.id)) {
+    lifetime.rewards.push(tier.id);
+    saveLifetime(lifetime);
   }
-  return a;
 }
 
 
@@ -137,8 +139,53 @@ function showScreen(id) {
 
 
 // ═══════════════════════════════════════
+// NAME SCREEN
+// ═══════════════════════════════════════
+function initNameScreen() {
+  const input = document.getElementById('name-input');
+  const btn   = document.getElementById('name-btn');
+
+  input.addEventListener('input', () => {
+    btn.disabled = input.value.trim().length === 0;
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !btn.disabled) submitName();
+  });
+
+  btn.addEventListener('click', submitName);
+
+  // Pre-fill if returning to change name
+  const existing = getPlayerName();
+  if (existing) {
+    input.value  = existing;
+    btn.disabled = false;
+  }
+}
+
+function submitName() {
+  const name = document.getElementById('name-input').value.trim();
+  if (!name) return;
+  savePlayerName(name);
+  showGreeting(name);
+  showScreen('screen-setup');
+  refreshSetup();
+}
+
+
+// ═══════════════════════════════════════
 // SETUP SCREEN
 // ═══════════════════════════════════════
+function showGreeting(name) {
+  document.getElementById('greeting').textContent = name ? `Hi ${name}!` : '';
+}
+
+function refreshSetup() {
+  refreshLifetimeDisplay();
+  buildBadgeRow();
+  buildTablePicker();
+}
+
 function buildTablePicker() {
   const picker  = document.getElementById('table-picker');
   picker.innerHTML = '';
@@ -148,22 +195,21 @@ function buildTablePicker() {
     const btn        = document.createElement('button');
     const isSelected = state.selectedTables.includes(n);
     const isMastered = mastery.includes(n);
-    const diffName   = getTableDifficultyName(n);
+    const diff       = getDifficulty(n);
 
     btn.className = [
       'table-btn',
-      `difficulty-${diffName}`,
-      isSelected ? 'selected'  : '',
-      isMastered ? 'mastered'  : '',
+      `difficulty-${diff.name}`,
+      isSelected ? 'selected' : '',
+      isMastered ? 'mastered' : '',
     ].join(' ').trim();
 
-    // Number + optional star badge
     btn.innerHTML = isMastered
       ? `${n}<span class="star" aria-hidden="true">★</span>`
       : `${n}`;
 
     btn.setAttribute('aria-label',
-      `${n} times table, ${diffName}${isMastered ? ', mastered' : ''}`);
+      `${n} times table, ${diff.name}${isMastered ? ', mastered' : ''}`);
 
     btn.addEventListener('click', () => {
       const idx = state.selectedTables.indexOf(n);
@@ -184,11 +230,32 @@ function buildTablePicker() {
 }
 
 function refreshLifetimeDisplay() {
-  const { total, correct, best, points } = loadLifetime();
+  const { total, correct, best, points, sessions } = loadLifetime();
+  document.getElementById('ls-points').textContent  = points;
   document.getElementById('ls-total').textContent   = total;
   document.getElementById('ls-correct').textContent = correct;
   document.getElementById('ls-best').textContent    = best;
-  document.getElementById('ls-points').textContent  = points;
+
+  const bestSession = sessions.length
+    ? Math.max(...sessions.map(s => s.points))
+    : null;
+  document.getElementById('ls-best-session').textContent =
+    bestSession !== null ? `${bestSession} pts` : '—';
+}
+
+function buildBadgeRow() {
+  const row     = document.getElementById('badge-row');
+  row.innerHTML = '';
+  const { rewards } = loadLifetime();
+
+  CONFIG.rewardTiers.forEach(tier => {
+    const span = document.createElement('span');
+    span.className  = 'badge-item' + (rewards.includes(tier.id) ? ' earned' : '');
+    span.textContent = tier.emoji;
+    span.setAttribute('aria-label', rewards.includes(tier.id) ? tier.name : `${tier.name} (locked)`);
+    span.title      = rewards.includes(tier.id) ? tier.name : `🔒 ${tier.name} — ${tier.pointsRequired} pts`;
+    row.appendChild(span);
+  });
 }
 
 
@@ -204,10 +271,52 @@ function setMode(mode) {
 
 
 // ═══════════════════════════════════════
+// POINTS CALCULATION
+// ═══════════════════════════════════════
+function calculatePoints(table) {
+  const diff           = getDifficulty(table);
+  const modeMultiplier = CONFIG.modes[state.mode].multiplier;
+  const { mastery }    = loadLifetime();
+  const masteryFactor  = mastery.includes(table) ? CONFIG.masteryPenalty : 1;
+  return Math.max(1, Math.round(diff.multiplier * modeMultiplier * masteryFactor));
+}
+
+
+// ═══════════════════════════════════════
+// DECK BUILDING & SHUFFLING
+// ═══════════════════════════════════════
+function buildDeck() {
+  const questions = [];
+  for (const table of state.selectedTables) {
+    for (let mult = 1; mult <= 12; mult++) {
+      questions.push({ a: table, b: mult, answer: table * mult, key: `${table}x${mult}` });
+    }
+  }
+  return shuffleArray(questions);
+}
+
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+
+// ═══════════════════════════════════════
 // QUESTION DISPLAY
 // ═══════════════════════════════════════
 function showQuestion() {
-  // Deck empty = all questions answered correctly
+  // Check for a pending reward first (e.g. unlocked during a 10-in-a-row celebration)
+  if (state.pendingReward) {
+    const tier = state.pendingReward;
+    state.pendingReward = null;
+    showReward(tier);
+    return;
+  }
+
   if (state.deck.length === 0) {
     handleDeckComplete();
     return;
@@ -230,7 +339,6 @@ function showQuestion() {
 function showHardMode() {
   document.getElementById('hard-mode-controls').classList.remove('hidden');
   document.getElementById('easy-mode-controls').classList.add('hidden');
-
   const input = document.getElementById('answer-input');
   input.value    = '';
   input.disabled = false;
@@ -241,11 +349,9 @@ function showHardMode() {
 function showEasyMode(correctAnswer) {
   document.getElementById('hard-mode-controls').classList.add('hidden');
   document.getElementById('easy-mode-controls').classList.remove('hidden');
-
   const choices = generateChoices(correctAnswer);
   const grid    = document.getElementById('choice-grid');
   grid.innerHTML = '';
-
   choices.forEach(value => {
     const btn = document.createElement('button');
     btn.className   = 'choice-btn';
@@ -255,7 +361,6 @@ function showEasyMode(correctAnswer) {
   });
 }
 
-// Generates 3 plausible wrong answers close to the correct one
 function generateChoices(correct) {
   const wrongs = new Set();
   const candidates = shuffleArray(
@@ -272,52 +377,43 @@ function generateChoices(correct) {
 // ANSWER HANDLING
 // ═══════════════════════════════════════
 
-// Easy mode: user tapped a choice button
 function handleChoiceTap(tappedBtn, chosen, correctAnswer) {
   if (state.locked) return;
-
-  // Disable all choice buttons immediately
   document.querySelectorAll('.choice-btn').forEach(b => (b.disabled = true));
-
-  // Colour the tapped button and reveal the correct one
   tappedBtn.classList.add(chosen === correctAnswer ? 'correct-choice' : 'wrong-choice');
   if (chosen !== correctAnswer) {
     document.querySelectorAll('.choice-btn').forEach(b => {
       if (parseInt(b.textContent, 10) === correctAnswer) b.classList.add('correct-choice');
     });
   }
-
   processAnswer(chosen === correctAnswer);
 }
 
-// Hard mode: user pressed Check or Enter
 function checkAnswer() {
   if (state.locked) return;
-
   const input = document.getElementById('answer-input');
   const raw   = input.value.trim();
   if (!raw) return;
-
   const userAnswer = parseInt(raw, 10);
   if (isNaN(userAnswer)) return;
-
   input.disabled = true;
   document.getElementById('submit-btn').disabled = true;
-
   processAnswer(userAnswer === state.currentQuestion.answer);
 }
 
-// Shared logic for both modes
 function processAnswer(isCorrect) {
   state.locked = true;
-
   const q = state.currentQuestion;
 
-  // Remove this question from the front of the deck
+  // Track which tables were practiced
+  state.sessionTables.add(q.a);
+
+  // Remove from front of deck
   state.deck.shift();
 
   state.sessionTotal++;
-  const lifetime = loadLifetime();
+  const lifetime      = loadLifetime();
+  const pointsBefore  = lifetime.points;
   lifetime.total++;
 
   if (isCorrect) {
@@ -326,24 +422,32 @@ function processAnswer(isCorrect) {
     state.masteredSet.add(q.key);
 
     const pts = calculatePoints(q.a);
+    state.sessionPoints += pts;
     lifetime.correct++;
     lifetime.points += pts;
     if (state.sessionStreak > lifetime.best) lifetime.best = state.sessionStreak;
 
     showFeedback('correct', pickCorrectMessage());
+
+    // Check if a reward tier was just crossed
+    const newTier = checkNewReward(pointsBefore, lifetime.points);
+    if (newTier) {
+      unlockReward(newTier);
+      state.pendingReward = newTier;
+    }
   } else {
     state.sessionStreak = 0;
-    state.masteredSet.delete(q.key); // no longer counts as mastered for this session
+    state.masteredSet.delete(q.key);
 
-    // Put the question back ~4 positions ahead so it comes around again soon
-    const insertAt = Math.min(4, state.deck.length);
+    // Re-insert question a few positions ahead
+    const insertAt = Math.min(CONFIG.wrongAnswerInsertAt, state.deck.length);
     state.deck.splice(insertAt, 0, q);
 
     showFeedback('wrong', `Not quite — the answer is ${q.answer}`);
   }
 
   saveLifetime(lifetime);
-  updateSessionStats();
+  updateSessionStats(lifetime.points);
 
   const hitCelebration = isCorrect && state.sessionStreak % 10 === 0;
   const delay = hitCelebration ? 900 : (isCorrect ? 1000 : 1900);
@@ -351,8 +455,9 @@ function processAnswer(isCorrect) {
   setTimeout(() => {
     if (hitCelebration) {
       showCelebration();
+      // pendingReward (if any) will be shown when "Keep Going!" is tapped
     } else {
-      showQuestion(); // will check deck.length === 0 automatically
+      showQuestion(); // handles pendingReward and empty deck automatically
     }
   }, delay);
 }
@@ -360,18 +465,16 @@ function processAnswer(isCorrect) {
 
 // ═══════════════════════════════════════
 // DECK COMPLETE
-// Called when state.deck reaches zero.
-// Awards mastery stars for any table where
-// all 12 questions were answered correctly.
 // ═══════════════════════════════════════
 function handleDeckComplete() {
-  const lifetime     = loadLifetime();
+  saveSession();
+
+  const lifetime      = loadLifetime();
   const newlyMastered = [];
 
   for (const table of state.selectedTables) {
     const allDone = Array.from({ length: 12 }, (_, i) => `${table}x${i + 1}`)
                         .every(key => state.masteredSet.has(key));
-
     if (allDone && !lifetime.mastery.includes(table)) {
       newlyMastered.push(table);
       lifetime.mastery.push(table);
@@ -385,8 +488,9 @@ function handleDeckComplete() {
   const detail   = document.getElementById('mastered-detail');
 
   if (newlyMastered.length > 0) {
-    title.textContent    = 'Table' + (newlyMastered.length > 1 ? 's' : '') + ' Mastered!';
-    subtitle.textContent = newlyMastered.join(', ') + ' ×  ★ New star' + (newlyMastered.length > 1 ? 's' : '') + ' earned!';
+    const plural   = newlyMastered.length > 1;
+    title.textContent    = `Table${plural ? 's' : ''} Mastered!`;
+    subtitle.textContent = `${newlyMastered.join(', ')} × — ★ New star${plural ? 's' : ''} earned!`;
     detail.textContent   = 'Time to try something harder — pick a new table!';
   } else {
     title.textContent    = 'Deck Complete!';
@@ -399,26 +503,22 @@ function handleDeckComplete() {
 
 
 // ═══════════════════════════════════════
-// SESSION STATS DISPLAY
+// STATS DISPLAY
 // ═══════════════════════════════════════
-function updateSessionStats() {
+function updateSessionStats(lifetimePoints) {
   document.getElementById('stat-total').textContent   = state.sessionTotal;
   document.getElementById('stat-correct').textContent = state.sessionCorrect;
   document.getElementById('stat-streak').textContent  = state.sessionStreak;
-  document.getElementById('stat-points').textContent  = loadLifetime().points;
+  document.getElementById('stat-points').textContent  = lifetimePoints;
 }
 
 
 // ═══════════════════════════════════════
-// FEEDBACK BANNER
+// FEEDBACK
 // ═══════════════════════════════════════
-const CORRECT_MESSAGES = [
-  '✅ Correct!', '🌟 Brilliant!', '🎉 Well done!',
-  '✅ Spot on!',  '⭐ Great work!', '🚀 Superstar!', '✅ Nailed it!',
-];
-
 function pickCorrectMessage() {
-  return CORRECT_MESSAGES[Math.floor(Math.random() * CORRECT_MESSAGES.length)];
+  const msgs = CONFIG.correctMessages;
+  return msgs[Math.floor(Math.random() * msgs.length)];
 }
 
 function showFeedback(type, message) {
@@ -438,6 +538,9 @@ function hideFeedback() {
 // CELEBRATION (10 in a row)
 // ═══════════════════════════════════════
 function showCelebration() {
+  const name = getPlayerName();
+  document.getElementById('celebration-name-line').textContent =
+    name ? `You're a Maths Superstar, ${name}!` : 'You are a Maths Superstar!';
   showScreen('screen-celebration');
   spawnConfetti();
 }
@@ -445,12 +548,10 @@ function showCelebration() {
 function spawnConfetti() {
   const container = document.getElementById('confetti-container');
   container.innerHTML = '';
-
   const COLOURS = ['#7c3aed','#f97316','#22c55e','#fbbf24','#ef4444','#3b82f6','#ec4899','#06b6d4'];
   const SHAPES  = ['3px', '50%'];
-
   for (let i = 0; i < 70; i++) {
-    const el   = document.createElement('div');
+    const el = document.createElement('div');
     el.className = 'confetti-piece';
     const size = 8 + Math.random() * 10;
     el.style.cssText = [
@@ -468,38 +569,141 @@ function spawnConfetti() {
 
 
 // ═══════════════════════════════════════
-// START SESSION
+// REWARD SCREEN
+// ═══════════════════════════════════════
+function showReward(tier) {
+  document.getElementById('screen-reward').style.background = tier.gradient;
+  document.getElementById('reward-emoji-display').textContent = tier.emoji;
+  document.getElementById('reward-name').textContent         = tier.name;
+  document.getElementById('reward-description').textContent  = tier.description;
+
+  const videoWrapper = document.getElementById('reward-video-wrapper');
+  if (tier.videoFile) {
+    document.getElementById('reward-video-src').src = tier.videoFile;
+    document.getElementById('reward-video').load();
+    videoWrapper.classList.remove('hidden');
+  } else {
+    videoWrapper.classList.add('hidden');
+  }
+
+  showScreen('screen-reward');
+}
+
+
+// ═══════════════════════════════════════
+// SCOREBOARD SCREEN
+// ═══════════════════════════════════════
+function buildScoreboard() {
+  const name = getPlayerName();
+  document.getElementById('scoreboard-name-line').textContent =
+    name ? `${name}'s score history` : 'Your score history';
+
+  const { sessions } = loadLifetime();
+  const list  = document.getElementById('scoreboard-list');
+  const empty = document.getElementById('scoreboard-empty');
+  list.innerHTML = '';
+
+  if (sessions.length === 0) {
+    empty.classList.remove('hidden');
+    return;
+  }
+
+  empty.classList.add('hidden');
+
+  // Find the best session by points
+  const bestPts = Math.max(...sessions.map(s => s.points));
+
+  sessions.forEach(session => {
+    const isBest   = session.points === bestPts;
+    const accuracy = session.answered > 0
+      ? Math.round((session.correct / session.answered) * 100)
+      : 0;
+
+    const row = document.createElement('div');
+    row.className = 'session-row' + (isBest ? ' best' : '');
+
+    const tablesStr = session.tables.length ? `×${session.tables.join(', ')}` : '';
+
+    row.innerHTML = `
+      <div>
+        <div class="session-date">${formatDate(session.date)}</div>
+        <div class="session-tables">${tablesStr}</div>
+      </div>
+      <div class="session-detail">
+        ${session.answered} answered · ${accuracy}% correct
+        ${isBest ? '<span class="session-best-badge">Best</span>' : ''}
+      </div>
+      <div class="session-points">${session.points} pts</div>
+    `;
+
+    list.appendChild(row);
+  });
+}
+
+function formatDate(dateStr) {
+  const today     = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (dateStr === today)     return 'Today';
+  if (dateStr === yesterday) return 'Yesterday';
+  const d = new Date(dateStr + 'T00:00:00'); // force local time
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+
+// ═══════════════════════════════════════
+// START PRACTICE SESSION
 // ═══════════════════════════════════════
 function startPractice() {
   state.sessionTotal   = 0;
   state.sessionCorrect = 0;
   state.sessionStreak  = 0;
+  state.sessionPoints  = 0;
+  state.sessionSaved   = false;
   state.deck           = buildDeck();
   state.masteredSet    = new Set();
+  state.sessionTables  = new Set();
+  state.pendingReward  = null;
 
-  // Update mode badge on practice screen
-  const modeText = state.mode === 'hard' ? 'Hard mode · ×2 points' : 'Easy mode · ×1 point';
-  document.getElementById('mode-badge').textContent = modeText;
+  document.getElementById('mode-badge').textContent =
+    CONFIG.modes[state.mode].badge;
 
-  updateSessionStats();
+  updateSessionStats(loadLifetime().points);
   showScreen('screen-practice');
   showQuestion();
 }
 
 
 // ═══════════════════════════════════════
+// BACK TO SETUP (save session first)
+// ═══════════════════════════════════════
+function goToSetup() {
+  saveSession();
+  state.selectedTables = [];
+  showScreen('screen-setup');
+  refreshSetup();
+}
+
+
+// ═══════════════════════════════════════
 // INITIALISE
-// Runs once when the page finishes loading.
 // ═══════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
 
-  // Register the service worker (enables offline use)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   }
 
-  buildTablePicker();
-  refreshLifetimeDisplay();
+  initNameScreen();
+
+  // Decide which screen to start on
+  const name = getPlayerName();
+  if (name) {
+    showGreeting(name);
+    showScreen('screen-setup');
+    refreshSetup();
+  } else {
+    showScreen('screen-name');
+  }
 
   // Mode toggle
   document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -510,29 +714,44 @@ document.addEventListener('DOMContentLoaded', () => {
   // Setup screen
   document.getElementById('start-btn').addEventListener('click', startPractice);
 
+  document.getElementById('change-name-btn').addEventListener('click', () => {
+    showScreen('screen-name');
+  });
+
+  document.getElementById('scores-btn').addEventListener('click', () => {
+    buildScoreboard();
+    showScreen('screen-scoreboard');
+  });
+
   // Practice screen
   document.getElementById('submit-btn').addEventListener('click', checkAnswer);
   document.getElementById('answer-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') checkAnswer();
   });
-  document.getElementById('back-btn').addEventListener('click', () => {
-    showScreen('screen-setup');
-    refreshLifetimeDisplay();
-    buildTablePicker();
-  });
+  document.getElementById('back-btn').addEventListener('click', goToSetup);
 
   // Celebration screen
   document.getElementById('continue-btn').addEventListener('click', () => {
     showScreen('screen-practice');
-    showQuestion(); // will detect empty deck if needed
+    showQuestion(); // will show pending reward or next question
   });
 
   // Mastered screen
-  document.getElementById('mastered-btn').addEventListener('click', () => {
-    state.selectedTables = [];   // clear selection so she picks fresh
+  document.getElementById('mastered-btn').addEventListener('click', goToSetup);
+
+  // Scoreboard screen
+  document.getElementById('scoreboard-back-btn').addEventListener('click', () => {
     showScreen('screen-setup');
-    refreshLifetimeDisplay();
-    buildTablePicker();
+    refreshSetup();
+  });
+
+  // Reward screen
+  document.getElementById('reward-continue-btn').addEventListener('click', () => {
+    // Stop any playing video
+    const video = document.getElementById('reward-video');
+    video.pause();
+    showScreen('screen-practice');
+    showQuestion();
   });
 
 });

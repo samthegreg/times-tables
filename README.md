@@ -4,7 +4,7 @@ A child-friendly times tables practice app for iPad, built as a web app.
 
 ## Purpose
 
-Lets a child choose which times tables to practise (2–12), answer one question at a time, get instant right/wrong feedback, and earn points and stars. Questions are managed as a smart deck — wrong answers come back quickly, right answers don't repeat until the table is complete. When a full table is mastered, the app prompts her to try a new one.
+Lets a child choose which times tables to practise (2–12), answer one question at a time, earn points, collect mastery stars, and unlock reward badges. A smart deck ensures wrong answers come back quickly and right answers don't repeat until the full table is done.
 
 ---
 
@@ -12,7 +12,7 @@ Lets a child choose which times tables to practise (2–12), answer one question
 
 **Option 1 — open directly in a browser (quickest for testing)**
 
-Double-click `index.html`. It will open in your default browser. Everything works except the "install as app" feature.
+Double-click `index.html`. Everything works except the "install as app" feature.
 
 **Option 2 — run a local server (needed to test offline / PWA install)**
 
@@ -25,49 +25,67 @@ python3 -m http.server 8000
 
 What those commands do:
 - `cd` — "change directory" — moves Terminal into the project folder
-- `python3 -m http.server 8000` — starts a tiny web server on your computer at `http://localhost:8000`
+- `python3 -m http.server 8000` — starts a tiny web server at `http://localhost:8000`
 
-Then open `http://localhost:8000` in Safari or Chrome. Press `Ctrl + C` in Terminal to stop the server.
+Press `Ctrl + C` in Terminal to stop the server.
 
 ---
 
 ## File structure
 
 ```
-index.html        — The page structure (four screens)
-style.css         — Visual design (colours, layout, animations)
-app.js            — All logic (deck, scoring, modes, saving)
+index.html        — Page structure (seven screens)
+style.css         — Visual design
+config.js         — All content settings: tiers, difficulty, points, messages
+app.js            — All logic: deck, scoring, name, sessions, rewards
 manifest.json     — Lets browsers install this as an app
 service-worker.js — Makes the app work offline after first load
+rewards/          — Drop reward video files here (see rewards/README.txt)
 README.md         — This file
+```
+
+**To change point thresholds, reward tiers, difficulty groups, or messages: edit `config.js` only. No need to touch `app.js`.**
+
+---
+
+## Reverting changes with git
+
+Every completed feature is saved as a git snapshot. To see the history:
+```
+git log --oneline
+```
+
+To go back to a previous snapshot:
+```
+git checkout <snapshot-id>
 ```
 
 ---
 
 ## Completed features
 
-- Choose which tables to practise (2–12) with difficulty colour-coding
-- **Smart deck system** — wrong answers return within 4 questions; right answers don't repeat until the deck is done
-- **Deck completion** — when all questions answered correctly, prompts to try a new table instead of looping
-- **Mastery stars** — each table earns a ★ the first time its full deck is completed; saved on device
-- **Easy mode** — four tap buttons (multiple choice); no typing needed
-- **Hard mode** — type the answer; earns double points
-- **Points system** with three multipliers:
-  - Table difficulty: Easy tables (2, 5, 10) = ×1 · Medium (3, 4, 6, 11, 12) = ×2 · Hard (7, 8, 9) = ×3
-  - Mode: Easy = ×1 · Hard = ×2
-  - Already mastered: ×0.5 (encourages moving to new tables)
-- Session stats: total answered, correct, current streak, points
-- Lifetime stats saved on device: total, correct, best streak, total points, mastery stars
-- Celebration screen with confetti after 10 correct in a row
-- Child-friendly design, large touch targets, iPad-ready
+- **Name entry** — first-launch prompt; personalises greetings and scoreboard; changeable at any time
+- **Scoreboard** — last 10 sessions with date, points, tables practiced, accuracy; best session highlighted
+- **Best session** visible on setup screen at all times
+- **Tiered reward badges** — Bronze (50 pts), Silver (150 pts), Gold (400 pts); earned once and saved permanently; greyed out until unlocked
+- **Gold reward video** — drop `rewards/reward-gold.mp4` into the rewards folder; plays in-app when Gold is unlocked
+- **Smart deck system** — wrong answers return within 4 questions; right answers leave the deck
+- **Deck completion** — prompts to try new tables rather than looping; awards mastery stars
+- **Mastery stars** — each table earns a ★ on first full completion; saved permanently
+- **Easy mode** — four multiple-choice buttons; earns ×1 mode bonus
+- **Hard mode** — type the answer; earns ×2 mode bonus
+- **Points system** — table difficulty (×1/×2/×3) × mode bonus (×1/×2) × mastery penalty (×0.5 once starred)
+- **Celebration** — confetti screen after 10 correct in a row, personalised with name
+- **Works offline** after first load (Progressive Web App)
+- **Version history** via git — every feature checkpoint is a named snapshot
 
 ---
 
 ## Sensible next steps
 
-- Add proper app icons (192×192 and 512×512 PNG files) for iPad home screen shortcut
-- Tie points to a tangible reward (e.g. unlock a sticker, unlock a Spotify playlist)
-- Show a per-table stats breakdown (accuracy %, best streak per table)
+- Add a second child profile (separate name, stats, and progress)
+- Add proper app icons (192×192 and 512×512 PNG) for iPad home screen
 - Add sound effects (ding for correct, buzz for wrong)
-- Allow child to enter their name to personalise the experience
+- Add per-table accuracy breakdown so weak spots are visible
+- Allow custom reward thresholds and tier names from within the app
 - Add a parent dashboard showing progress over time

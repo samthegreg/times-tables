@@ -13,11 +13,39 @@
 <body>
 
   <!-- ══════════════════════════════════════
-       SCREEN 1 — SETUP
+       SCREEN 1 — NAME ENTRY
+       Shown only on first launch
        ══════════════════════════════════════ -->
-  <div id="screen-setup" class="screen active">
+  <div id="screen-name" class="screen">
+    <div id="name-card">
+      <div class="name-emoji">👋</div>
+      <h2>Welcome!</h2>
+      <p class="name-prompt">What's your name?</p>
+      <input
+        id="name-input"
+        type="text"
+        maxlength="20"
+        placeholder="Type your name…"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+      >
+      <button id="name-btn" class="btn-primary" disabled>Let's Go!</button>
+    </div>
+  </div>
 
-    <h1>Times Tables</h1>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 2 — SETUP
+       Choose tables, mode, see stats
+       ══════════════════════════════════════ -->
+  <div id="screen-setup" class="screen">
+
+    <div id="setup-header">
+      <h1>Times Tables</h1>
+      <p id="greeting"><!-- e.g. "Hi Lily!" inserted by JS --></p>
+      <button id="change-name-btn" class="btn-ghost">✏️ Change name</button>
+    </div>
 
     <!-- Easy / Hard mode toggle -->
     <div id="mode-toggle">
@@ -31,7 +59,6 @@
 
     <p class="subtitle">Choose your tables:</p>
 
-    <!-- Difficulty key -->
     <div id="difficulty-key">
       <span class="key-dot easy-dot"></span>Easy
       <span class="key-dot medium-dot"></span>Medium
@@ -39,19 +66,27 @@
       <span class="key-star">★</span>Mastered
     </div>
 
-    <!-- Table number buttons (2–12), built by JS -->
+    <!-- Table number buttons 2–12 (built by JS) -->
     <div id="table-picker"></div>
 
     <button id="start-btn" class="btn-primary" disabled>Let's Go!</button>
 
-    <!-- Lifetime stats -->
+    <!-- Earned reward badges -->
+    <div id="badge-row">
+      <!-- Small emoji badges for each unlocked tier — built by JS -->
+    </div>
+
+    <!-- Stats + scoreboard link -->
     <div id="lifetime-stats">
       <div class="lifetime-row">
-        <span>⭐ <strong id="ls-points">0</strong> points</span>
-        <span>Best streak: <strong id="ls-best">0</strong></span>
+        <span>⭐ <strong id="ls-points">0</strong> pts</span>
+        <span>Best session: <strong id="ls-best-session">—</strong></span>
+        <button id="scores-btn" class="btn-ghost">📊 Scores</button>
       </div>
-      <div class="lifetime-row">
-        All time: <strong id="ls-total">0</strong> answered &nbsp;·&nbsp; <strong id="ls-correct">0</strong> correct
+      <div class="lifetime-row muted">
+        All time: <strong id="ls-total">0</strong> answered &nbsp;·&nbsp;
+        <strong id="ls-correct">0</strong> correct &nbsp;·&nbsp;
+        Best streak: <strong id="ls-best">0</strong>
       </div>
     </div>
 
@@ -59,11 +94,10 @@
 
 
   <!-- ══════════════════════════════════════
-       SCREEN 2 — PRACTICE
+       SCREEN 3 — PRACTICE
        ══════════════════════════════════════ -->
   <div id="screen-practice" class="screen">
 
-    <!-- Four stat blocks along the top -->
     <div id="stats-bar">
       <div class="stat-block">
         <div class="stat-label">Total</div>
@@ -83,11 +117,10 @@
       </div>
     </div>
 
-    <!-- The question card -->
     <div id="question-card">
       <div id="question-text">_ × _ = ?</div>
 
-      <!-- HARD MODE: text input -->
+      <!-- Hard mode: text input -->
       <div id="hard-mode-controls">
         <input
           id="answer-input"
@@ -101,20 +134,16 @@
         <button id="submit-btn" class="btn-primary">Check!</button>
       </div>
 
-      <!-- EASY MODE: four tap buttons -->
+      <!-- Easy mode: four tap buttons -->
       <div id="easy-mode-controls" class="hidden">
-        <div id="choice-grid">
-          <!-- Four buttons inserted by JS -->
-        </div>
+        <div id="choice-grid"></div>
       </div>
     </div>
 
-    <!-- Right / Wrong feedback -->
     <div id="feedback-area" class="hidden"></div>
 
-    <!-- Mode badge and back button -->
     <div id="practice-footer">
-      <span id="mode-badge">Hard mode · ×2 points</span>
+      <span id="mode-badge"></span>
       <button id="back-btn" class="btn-secondary">Change Tables</button>
     </div>
 
@@ -122,7 +151,7 @@
 
 
   <!-- ══════════════════════════════════════
-       SCREEN 3 — CELEBRATION (10 in a row)
+       SCREEN 4 — CELEBRATION (10 in a row)
        ══════════════════════════════════════ -->
   <div id="screen-celebration" class="screen">
     <div id="confetti-container"></div>
@@ -130,14 +159,14 @@
       <div class="celebration-emoji">🌟</div>
       <h2>Amazing!</h2>
       <p class="celebration-big">10 in a row!</p>
-      <p class="celebration-sub">You are a Maths Superstar!</p>
+      <p class="celebration-sub" id="celebration-name-line"></p>
       <button id="continue-btn" class="btn-primary">Keep Going!</button>
     </div>
   </div>
 
 
   <!-- ══════════════════════════════════════
-       SCREEN 4 — DECK COMPLETE (all mastered)
+       SCREEN 5 — DECK COMPLETE
        ══════════════════════════════════════ -->
   <div id="screen-mastered" class="screen">
     <div id="mastered-card">
@@ -150,6 +179,56 @@
   </div>
 
 
+  <!-- ══════════════════════════════════════
+       SCREEN 6 — SCOREBOARD
+       Session history
+       ══════════════════════════════════════ -->
+  <div id="screen-scoreboard" class="screen">
+
+    <div id="scoreboard-header">
+      <h2>📊 Your Scores</h2>
+      <p id="scoreboard-name-line"></p>
+    </div>
+
+    <div id="scoreboard-list">
+      <!-- Session rows inserted by JS -->
+    </div>
+
+    <p id="scoreboard-empty" class="hidden muted-text">
+      No sessions yet — play a round to see your scores here!
+    </p>
+
+    <button id="scoreboard-back-btn" class="btn-secondary">← Back</button>
+
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       SCREEN 7 — REWARD UNLOCKED
+       Shown when a points tier is crossed
+       ══════════════════════════════════════ -->
+  <div id="screen-reward" class="screen">
+    <div id="reward-card">
+      <div id="reward-emoji-display"></div>
+      <h2>Reward Unlocked!</h2>
+      <h3 id="reward-name"></h3>
+      <p id="reward-description"></p>
+
+      <!-- Video player — only shown for tiers that have a videoFile -->
+      <div id="reward-video-wrapper" class="hidden">
+        <video id="reward-video" controls playsinline preload="metadata">
+          <source id="reward-video-src" src="" type="video/mp4">
+        </video>
+        <p class="video-hint">Ask a grown-up if the video isn't playing.</p>
+      </div>
+
+      <button id="reward-continue-btn" class="btn-primary">Keep Going!</button>
+    </div>
+  </div>
+
+
+  <!-- config.js must load before app.js -->
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
