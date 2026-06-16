@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Times Tables">
+  <title>Times Tables Practice</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 1 — SETUP
+       ══════════════════════════════════════ -->
+  <div id="screen-setup" class="screen active">
+
+    <h1>Times Tables</h1>
+
+    <!-- Easy / Hard mode toggle -->
+    <div id="mode-toggle">
+      <button class="mode-btn" data-mode="easy">
+        Easy<span class="mode-tag">tap to pick</span>
+      </button>
+      <button class="mode-btn" data-mode="hard">
+        Hard<span class="mode-tag">type it in</span>
+      </button>
+    </div>
+
+    <p class="subtitle">Choose your tables:</p>
+
+    <!-- Difficulty key -->
+    <div id="difficulty-key">
+      <span class="key-dot easy-dot"></span>Easy
+      <span class="key-dot medium-dot"></span>Medium
+      <span class="key-dot hard-dot"></span>Hard
+      <span class="key-star">★</span>Mastered
+    </div>
+
+    <!-- Table number buttons (2–12), built by JS -->
+    <div id="table-picker"></div>
+
+    <button id="start-btn" class="btn-primary" disabled>Let's Go!</button>
+
+    <!-- Lifetime stats -->
+    <div id="lifetime-stats">
+      <div class="lifetime-row">
+        <span>⭐ <strong id="ls-points">0</strong> points</span>
+        <span>Best streak: <strong id="ls-best">0</strong></span>
+      </div>
+      <div class="lifetime-row">
+        All time: <strong id="ls-total">0</strong> answered &nbsp;·&nbsp; <strong id="ls-correct">0</strong> correct
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       SCREEN 2 — PRACTICE
+       ══════════════════════════════════════ -->
+  <div id="screen-practice" class="screen">
+
+    <!-- Four stat blocks along the top -->
+    <div id="stats-bar">
+      <div class="stat-block">
+        <div class="stat-label">Total</div>
+        <div class="stat-value" id="stat-total">0</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label">Correct</div>
+        <div class="stat-value" id="stat-correct">0</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label">Streak</div>
+        <div class="stat-value" id="stat-streak">0</div>
+      </div>
+      <div class="stat-block highlight">
+        <div class="stat-label">Points</div>
+        <div class="stat-value" id="stat-points">0</div>
+      </div>
+    </div>
+
+    <!-- The question card -->
+    <div id="question-card">
+      <div id="question-text">_ × _ = ?</div>
+
+      <!-- HARD MODE: text input -->
+      <div id="hard-mode-controls">
+        <input
+          id="answer-input"
+          type="number"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          placeholder="?"
+          autocomplete="off"
+          aria-label="Your answer"
+        >
+        <button id="submit-btn" class="btn-primary">Check!</button>
+      </div>
+
+      <!-- EASY MODE: four tap buttons -->
+      <div id="easy-mode-controls" class="hidden">
+        <div id="choice-grid">
+          <!-- Four buttons inserted by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Right / Wrong feedback -->
+    <div id="feedback-area" class="hidden"></div>
+
+    <!-- Mode badge and back button -->
+    <div id="practice-footer">
+      <span id="mode-badge">Hard mode · ×2 points</span>
+      <button id="back-btn" class="btn-secondary">Change Tables</button>
+    </div>
+
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       SCREEN 3 — CELEBRATION (10 in a row)
+       ══════════════════════════════════════ -->
+  <div id="screen-celebration" class="screen">
+    <div id="confetti-container"></div>
+    <div id="celebration-card">
+      <div class="celebration-emoji">🌟</div>
+      <h2>Amazing!</h2>
+      <p class="celebration-big">10 in a row!</p>
+      <p class="celebration-sub">You are a Maths Superstar!</p>
+      <button id="continue-btn" class="btn-primary">Keep Going!</button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       SCREEN 4 — DECK COMPLETE (all mastered)
+       ══════════════════════════════════════ -->
+  <div id="screen-mastered" class="screen">
+    <div id="mastered-card">
+      <div class="mastered-emoji">🎓</div>
+      <h2 id="mastered-title">Deck Complete!</h2>
+      <p id="mastered-subtitle"></p>
+      <p id="mastered-detail"></p>
+      <button id="mastered-btn" class="btn-primary">Try New Tables!</button>
+    </div>
+  </div>
+
+
+  <script src="app.js"></script>
+</body>
+</html>
