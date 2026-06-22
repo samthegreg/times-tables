@@ -81,10 +81,20 @@ git checkout <snapshot-id>
 
 ---
 
+## Deploying as a home screen app (in progress)
+
+The app is ready to deploy to Netlify as a proper installable PWA. Resume here next session:
+
+1. Open `make-icons.html` in your browser — click both download buttons
+2. Move `icon-192.png` and `icon-512.png` from Downloads into this Times Tables folder
+3. Go to **netlify.com**, sign in, drag this whole folder onto the deploy area
+4. Open the Netlify URL in Safari on iPad → Share → Add to Home Screen
+
+---
+
 ## Sensible next steps
 
 - Add a second child profile (separate name, stats, and progress)
-- Add proper app icons (192×192 and 512×512 PNG) for iPad home screen
 - Add sound effects (ding for correct, buzz for wrong)
 - Add per-table accuracy breakdown so weak spots are visible
 - Allow custom reward thresholds and tier names from within the app

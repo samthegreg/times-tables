@@ -1,7 +1,7 @@
 // The service worker is a background script the browser runs separately.
 // Its job: save copies of the app's files so it still works with no internet.
 
-const CACHE_NAME = 'times-tables-v2';
+const CACHE_NAME = 'times-tables-v3';
 
 // The list of files to save on first load
 const ASSETS = [
@@ -11,6 +11,8 @@ const ASSETS = [
   './app.js',
   './config.js',
   './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
 ];
 
 // INSTALL — runs once when the service worker is first registered.
