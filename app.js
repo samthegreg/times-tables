@@ -96,6 +96,7 @@ function saveSession() {
 
   const lifetime = loadLifetime();
   const session  = {
+    name:     getPlayerName() || '—',
     date:     new Date().toISOString().slice(0, 10),
     points:   state.sessionPoints,
     tables:   [...state.sessionTables].sort((a, b) => a - b),
@@ -576,6 +577,20 @@ function updateSessionStats(lifetimePoints) {
   document.getElementById('stat-correct').textContent = state.sessionCorrect;
   document.getElementById('stat-streak').textContent  = state.sessionStreak;
   document.getElementById('stat-points').textContent  = lifetimePoints;
+  updatePracticeRewardProgress();
+}
+
+function updatePracticeRewardProgress() {
+  const progress = getNextRewardProgress();
+  const bar      = document.getElementById('practice-reward-progress');
+  if (!progress) {
+    bar.classList.add('hidden');
+    return;
+  }
+  bar.classList.remove('hidden');
+  document.getElementById('practice-reward-label').textContent =
+    `${progress.tier.emoji} ${progress.tier.name}: ${progress.points} / ${progress.tier.pointsRequired} pts`;
+  document.getElementById('practice-reward-fill').style.width = progress.pct + '%';
 }
 
 
@@ -659,10 +674,6 @@ function showReward(tier) {
 // SCOREBOARD SCREEN
 // ═══════════════════════════════════════
 function buildScoreboard() {
-  const name = getPlayerName();
-  document.getElementById('scoreboard-name-line').textContent =
-    name ? `${name}'s score history` : 'Your score history';
-
   const { sessions } = loadLifetime();
   const list  = document.getElementById('scoreboard-list');
   const empty = document.getElementById('scoreboard-empty');
@@ -675,29 +686,27 @@ function buildScoreboard() {
 
   empty.classList.add('hidden');
 
-  // Find the best session by points
-  const bestPts = Math.max(...sessions.map(s => s.points));
+  // Sort by points descending for leaderboard view
+  const ranked = [...sessions].sort((a, b) => b.points - a.points);
 
-  sessions.forEach(session => {
-    const isBest   = session.points === bestPts;
+  ranked.forEach((session, idx) => {
+    const rank     = idx + 1;
     const accuracy = session.answered > 0
       ? Math.round((session.correct / session.answered) * 100)
       : 0;
+    const tablesStr = session.tables.length ? `×${session.tables.join(', ')}` : '';
+    const rankLabel = rank === 1 ? '👑' : `#${rank}`;
 
     const row = document.createElement('div');
-    row.className = 'session-row' + (isBest ? ' best' : '');
-
-    const tablesStr = session.tables.length ? `×${session.tables.join(', ')}` : '';
+    row.className = 'session-row' + (rank === 1 ? ' best' : '');
 
     row.innerHTML = `
+      <div class="session-rank">${rankLabel}</div>
       <div>
-        <div class="session-date">${formatDate(session.date)}</div>
-        <div class="session-tables">${tablesStr}</div>
+        <div class="session-name">${session.name || '—'}</div>
+        <div class="session-date">${formatDate(session.date)} · ${tablesStr}</div>
       </div>
-      <div class="session-detail">
-        ${session.answered} answered · ${accuracy}% correct
-        ${isBest ? '<span class="session-best-badge">Best</span>' : ''}
-      </div>
+      <div class="session-detail">${session.answered} q's · ${accuracy}%</div>
       <div class="session-points">${session.points} pts</div>
     `;
 
@@ -825,6 +834,7 @@ function startPractice() {
     CONFIG.modes[state.mode].badge;
 
   updateSessionStats(loadLifetime().points);
+  updatePracticeRewardProgress();
   showScreen('screen-practice');
   showQuestion();
 }
@@ -883,6 +893,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buildScoreboard();
     showScreen('screen-scoreboard');
   });
+
 
   // Practice screen
   document.getElementById('submit-btn').addEventListener('click', checkAnswer);

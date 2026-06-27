@@ -83,7 +83,7 @@
       <div class="lifetime-row">
         <span>⭐ <strong id="ls-points">0</strong> pts</span>
         <span>Best session: <strong id="ls-best-session">—</strong></span>
-        <button id="scores-btn" class="btn-ghost">📊 Scores</button>
+        <button id="scores-btn" class="btn-ghost">🏆 Leaderboard</button>
       </div>
       <div id="reward-progress" class="hidden">
         <div id="reward-progress-label"></div>
@@ -155,6 +155,14 @@
 
     <div id="feedback-area" class="hidden"></div>
 
+    <!-- Reward progress bar — shown during practice -->
+    <div id="practice-reward-progress">
+      <div id="practice-reward-label"></div>
+      <div id="practice-reward-track">
+        <div id="practice-reward-fill"></div>
+      </div>
+    </div>
+
     <div id="practice-footer">
       <span id="mode-badge"></span>
       <button id="back-btn" class="btn-secondary">Change Tables</button>
@@ -210,14 +218,14 @@
 
 
   <!-- ══════════════════════════════════════
-       SCREEN 8 — SCOREBOARD
-       Session history
+       SCREEN 8 — LEADERBOARD
+       All sessions ranked by top score
        ══════════════════════════════════════ -->
   <div id="screen-scoreboard" class="screen">
 
     <div id="scoreboard-header">
-      <h2>📊 Your Scores</h2>
-      <p id="scoreboard-name-line"></p>
+      <h2>🏆 Leaderboard</h2>
+      <p id="scoreboard-name-line">Top scores — all players</p>
     </div>
 
     <div id="scoreboard-list">

@@ -38,8 +38,8 @@ const CONFIG = {
   // Wrong answers re-enter the deck this many positions ahead.
   wrongAnswerInsertAt: 4,
 
-  // Maximum number of past sessions kept in history.
-  sessionHistoryLimit: 10,
+  // Maximum number of past sessions kept in the leaderboard.
+  sessionHistoryLimit: 100,
 
 
   // ── REWARD TIERS ──────────────────────────────────────
