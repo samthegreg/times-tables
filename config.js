@@ -64,7 +64,7 @@ const CONFIG = {
       pointsRequired: 150,
       description:    "You're getting really good at this — here's your reward! 🎵",
       gradient:       'linear-gradient(135deg, #374151 0%, #d1d5db 100%)',
-      videoUrl:       null,
+      videoUrl:       'https://www.youtube.com/embed/7yaU0qXlgbo?rel=0&modestbranding=1',
     },
     {
       id:             'gold',
