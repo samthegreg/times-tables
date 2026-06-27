@@ -55,10 +55,7 @@ const CONFIG = {
       pointsRequired: 50,
       description:    "Amazing work — you've earned a music video reward! 🎵",
       gradient:       'linear-gradient(135deg, #92400e 0%, #fbbf24 100%)',
-      // Paste a YouTube embed URL here, e.g.:
-      // 'https://www.youtube.com/embed/VIDEO_ID?rel=0&modestbranding=1'
-      // Find VIDEO_ID in the YouTube URL after "watch?v="
-      videoUrl:       null,
+      videoUrl:       'https://www.youtube.com/embed/QGJuMBdaqIw?rel=0&modestbranding=1',
     },
     {
       id:             'silver',
