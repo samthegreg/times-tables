@@ -644,19 +644,9 @@ function showReward(tier) {
   document.getElementById('reward-description').textContent  = tier.description;
 
   const videoWrapper = document.getElementById('reward-video-wrapper');
-  if (tier.videoFile) {
-    // Probe whether the file exists before showing the player
-    fetch(tier.videoFile, { method: 'HEAD' })
-      .then(r => {
-        if (r.ok) {
-          document.getElementById('reward-video-src').src = tier.videoFile;
-          document.getElementById('reward-video').load();
-          videoWrapper.classList.remove('hidden');
-        } else {
-          videoWrapper.classList.add('hidden');
-        }
-      })
-      .catch(() => videoWrapper.classList.add('hidden'));
+  if (tier.videoUrl) {
+    document.getElementById('reward-iframe').src = tier.videoUrl;
+    videoWrapper.classList.remove('hidden');
   } else {
     videoWrapper.classList.add('hidden');
   }
@@ -924,11 +914,9 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshSetup();
   });
 
-  // Reward screen
+  // Reward screen — clear the iframe src to stop the video when dismissed
   document.getElementById('reward-continue-btn').addEventListener('click', () => {
-    // Stop any playing video
-    const video = document.getElementById('reward-video');
-    video.pause();
+    document.getElementById('reward-iframe').src = '';
     showScreen('screen-practice');
     showQuestion();
   });

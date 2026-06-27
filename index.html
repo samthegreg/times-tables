@@ -244,11 +244,16 @@
       <h3 id="reward-name"></h3>
       <p id="reward-description"></p>
 
-      <!-- Video player — only shown for tiers that have a videoFile -->
+      <!-- Video player — only shown for tiers that have a videoUrl -->
       <div id="reward-video-wrapper" class="hidden">
-        <video id="reward-video" controls playsinline preload="metadata">
-          <source id="reward-video-src" src="" type="video/mp4">
-        </video>
+        <iframe
+          id="reward-iframe"
+          src=""
+          frameborder="0"
+          allow="autoplay; encrypted-media"
+          allowfullscreen
+          title="Reward video"
+        ></iframe>
         <p class="video-hint">Ask a grown-up if the video isn't playing.</p>
       </div>
 

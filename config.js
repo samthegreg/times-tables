@@ -55,8 +55,10 @@ const CONFIG = {
       pointsRequired: 50,
       description:    "Amazing work — you've earned a music video reward! 🎵",
       gradient:       'linear-gradient(135deg, #92400e 0%, #fbbf24 100%)',
-      // Drop a video file named bronze-reward.mp4 into the rewards/ folder to activate.
-      videoFile:      'rewards/bronze-reward.mp4',
+      // Paste a YouTube embed URL here, e.g.:
+      // 'https://www.youtube.com/embed/VIDEO_ID?rel=0&modestbranding=1'
+      // Find VIDEO_ID in the YouTube URL after "watch?v="
+      videoUrl:       null,
     },
     {
       id:             'silver',
@@ -65,8 +67,7 @@ const CONFIG = {
       pointsRequired: 150,
       description:    "You're getting really good at this — here's your reward! 🎵",
       gradient:       'linear-gradient(135deg, #374151 0%, #d1d5db 100%)',
-      // Drop a video file named silver-reward.mp4 into the rewards/ folder to activate.
-      videoFile:      'rewards/silver-reward.mp4',
+      videoUrl:       null,
     },
     {
       id:             'gold',
@@ -75,8 +76,7 @@ const CONFIG = {
       pointsRequired: 400,
       description:    "You've mastered times tables — enjoy your ultimate reward! 🏆🎵",
       gradient:       'linear-gradient(135deg, #78350f 0%, #fef08a 100%)',
-      // Drop a video file named gold-reward.mp4 into the rewards/ folder to activate.
-      videoFile:      'rewards/gold-reward.mp4',
+      videoUrl:       null,
     },
   ],
 

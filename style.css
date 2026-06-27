@@ -877,11 +877,12 @@ html, body {
   width: 100%;
 }
 
-#reward-video {
+#reward-iframe {
   width: 100%;
+  aspect-ratio: 16 / 9;
   border-radius: 1rem;
-  max-height: 280px;
   background: #000;
+  display: block;
 }
 
 .video-hint {
