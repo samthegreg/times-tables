@@ -29,6 +29,7 @@ const state = {
 
   locked:          false,        // prevents double-submission during feedback
   pendingReward:   null,         // a CONFIG.rewardTiers entry waiting to be shown
+  earnedRewards:   [],           // tier IDs earned this session (resets each session)
 
   // Test mode
   inTestMode:      false,
@@ -51,7 +52,6 @@ const KEYS = {
   points:   'tt_points',
   mastery:  'tt_mastery',   // JSON array of mastered table numbers
   sessions: 'tt_sessions',  // JSON array of past session objects
-  rewards:  'tt_rewards',   // JSON array of unlocked tier IDs
 };
 
 function loadLifetime() {
@@ -62,7 +62,6 @@ function loadLifetime() {
     points:   parseInt(localStorage.getItem(KEYS.points)  || '0', 10),
     mastery:  JSON.parse(localStorage.getItem(KEYS.mastery)  || '[]'),
     sessions: JSON.parse(localStorage.getItem(KEYS.sessions) || '[]'),
-    rewards:  JSON.parse(localStorage.getItem(KEYS.rewards)  || '[]'),
   };
 }
 
@@ -73,7 +72,6 @@ function saveLifetime(data) {
   localStorage.setItem(KEYS.points,   data.points);
   localStorage.setItem(KEYS.mastery,  JSON.stringify(data.mastery));
   localStorage.setItem(KEYS.sessions, JSON.stringify(data.sessions));
-  localStorage.setItem(KEYS.rewards,  JSON.stringify(data.rewards));
 }
 
 function getPlayerName() {
@@ -120,9 +118,10 @@ function saveSession() {
 // Returns null if no new tier was crossed.
 // ═══════════════════════════════════════
 function checkNewReward(previousPoints, newPoints) {
-  const { rewards } = loadLifetime();
   for (const tier of CONFIG.rewardTiers) {
-    if (!rewards.includes(tier.id) && previousPoints < tier.pointsRequired && newPoints >= tier.pointsRequired) {
+    if (!state.earnedRewards.includes(tier.id) &&
+        previousPoints < tier.pointsRequired &&
+        newPoints >= tier.pointsRequired) {
       return tier;
     }
   }
@@ -130,10 +129,8 @@ function checkNewReward(previousPoints, newPoints) {
 }
 
 function unlockReward(tier) {
-  const lifetime = loadLifetime();
-  if (!lifetime.rewards.includes(tier.id)) {
-    lifetime.rewards.push(tier.id);
-    saveLifetime(lifetime);
+  if (!state.earnedRewards.includes(tier.id)) {
+    state.earnedRewards.push(tier.id);
   }
 }
 
@@ -142,8 +139,8 @@ function unlockReward(tier) {
 // REWARD PROGRESS
 // ═══════════════════════════════════════
 function getNextRewardProgress() {
-  const { points, rewards } = loadLifetime();
-  const nextTier = CONFIG.rewardTiers.find(t => !rewards.includes(t.id));
+  const points  = state.sessionPoints;
+  const nextTier = CONFIG.rewardTiers.find(t => !state.earnedRewards.includes(t.id));
   if (!nextTier) return null;
   return {
     tier: nextTier,
@@ -270,29 +267,18 @@ function refreshLifetimeDisplay() {
   document.getElementById('ls-best-session').textContent =
     bestSession !== null ? `${bestSession} pts` : '—';
 
-  const progress    = getNextRewardProgress();
-  const progressEl  = document.getElementById('reward-progress');
-  if (progress) {
-    document.getElementById('reward-progress-label').textContent =
-      `${progress.tier.emoji} Next reward: ${progress.tier.name} — ${progress.points} / ${progress.tier.pointsRequired} pts`;
-    document.getElementById('reward-progress-fill').style.width = progress.pct + '%';
-    progressEl.classList.remove('hidden');
-  } else {
-    progressEl.classList.add('hidden');
-  }
 }
 
 function buildBadgeRow() {
   const row     = document.getElementById('badge-row');
   row.innerHTML = '';
-  const { rewards } = loadLifetime();
 
   CONFIG.rewardTiers.forEach(tier => {
     const span = document.createElement('span');
-    span.className  = 'badge-item' + (rewards.includes(tier.id) ? ' earned' : '');
+    span.className   = 'badge-item';
     span.textContent = tier.emoji;
-    span.setAttribute('aria-label', rewards.includes(tier.id) ? tier.name : `${tier.name} (locked)`);
-    span.title      = rewards.includes(tier.id) ? tier.name : `🔒 ${tier.name} — ${tier.pointsRequired} pts`;
+    span.setAttribute('aria-label', `${tier.name} — ${tier.pointsRequired} pts`);
+    span.title       = `🔒 ${tier.name} — earn ${tier.pointsRequired} pts in one session`;
     row.appendChild(span);
   });
 }
@@ -479,8 +465,8 @@ function processAnswer(isCorrect) {
     return;
   }
 
-  const lifetime      = loadLifetime();
-  const pointsBefore  = lifetime.points;
+  const lifetime          = loadLifetime();
+  const sessionPtsBefore  = state.sessionPoints;
   lifetime.total++;
 
   if (isCorrect) {
@@ -496,8 +482,8 @@ function processAnswer(isCorrect) {
 
     showFeedback('correct', pickCorrectMessage());
 
-    // Check if a reward tier was just crossed
-    const newTier = checkNewReward(pointsBefore, lifetime.points);
+    // Check if a reward tier was just crossed (session points only)
+    const newTier = checkNewReward(sessionPtsBefore, state.sessionPoints);
     if (newTier) {
       unlockReward(newTier);
       state.pendingReward = newTier;
@@ -775,6 +761,7 @@ function startTest() {
   state.masteredSet    = new Set();
   state.sessionTables  = new Set();
   state.pendingReward  = null;
+  state.earnedRewards  = [];
 
   const fullDeck   = buildDeck();
   state.deck       = fullDeck.slice(0, CONFIG.testQuestionsCount);
@@ -829,6 +816,7 @@ function startPractice() {
   state.masteredSet    = new Set();
   state.sessionTables  = new Set();
   state.pendingReward  = null;
+  state.earnedRewards  = [];
 
   document.getElementById('mode-badge').textContent =
     CONFIG.modes[state.mode].badge;
@@ -845,7 +833,8 @@ function startPractice() {
 // ═══════════════════════════════════════
 function goToSetup() {
   clearTestTimer();
-  state.inTestMode = false;
+  state.inTestMode    = false;
+  state.earnedRewards = [];
   document.getElementById('test-timer-bar').classList.add('hidden');
   saveSession();
   state.selectedTables = [];
