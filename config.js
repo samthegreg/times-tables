@@ -73,7 +73,7 @@ const CONFIG = {
       pointsRequired: 400,
       description:    "You've mastered times tables — enjoy your ultimate reward! 🏆🎵",
       gradient:       'linear-gradient(135deg, #78350f 0%, #fef08a 100%)',
-      videoUrl:       null,
+      videoUrl:       'https://www.youtube.com/embed/kG0z7hwY3as?rel=0&modestbranding=1',
     },
   ],
 
