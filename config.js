@@ -78,6 +78,17 @@ const CONFIG = {
   ],
 
 
+  // ── PERFECT TEST REWARD ───────────────────────────────
+  // Shown only when every question in a School Test is answered correctly.
+  perfectTestReward: {
+    name:        'Perfect Score!',
+    emoji:       '🌟',
+    description: 'You got every single answer right — enjoy your special reward! 🎵',
+    gradient:    'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%)',
+    videoUrl:    'https://www.youtube.com/embed/tD4HCZe-tew?rel=0&modestbranding=1',
+  },
+
+
   // ── CORRECT ANSWER MESSAGES ───────────────────────────
   correctMessages: [
     '✅ Correct!',   '🌟 Brilliant!', '🎉 Well done!',

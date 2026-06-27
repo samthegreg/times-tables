@@ -792,14 +792,34 @@ function showTestResults() {
   document.getElementById('test-score').textContent = `${score} / ${total}`;
   document.getElementById('test-pct').textContent   = `${pct}%`;
 
+  const isPerfect = score === total && total > 0;
+
   let message;
-  if      (pct >= 90) message = '🌟 Outstanding! Your teacher will be so impressed!';
-  else if (pct >= 75) message = '🎉 Really good work! Keep practising!';
-  else if (pct >= 50) message = '💪 Good effort! A bit more practice and you\'ll smash it!';
-  else                message = '😊 Keep practising — you\'ll get there!';
+  if      (isPerfect)  message = '🌟 PERFECT! Every single answer correct!';
+  else if (pct >= 90)  message = '🌟 Outstanding! Your teacher will be so impressed!';
+  else if (pct >= 75)  message = '🎉 Really good work! Keep practising!';
+  else if (pct >= 50)  message = '💪 Good effort! A bit more practice and you\'ll smash it!';
+  else                 message = '😊 Keep practising — you\'ll get there!';
 
   document.getElementById('test-message').textContent = message;
+
+  const rewardBtn = document.getElementById('test-reward-btn');
+  if (isPerfect) rewardBtn.classList.remove('hidden');
+  else           rewardBtn.classList.add('hidden');
+
   showScreen('screen-test-result');
+}
+
+function showPerfectTestReward() {
+  showReward(CONFIG.perfectTestReward);
+  // After this reward, return to setup rather than back into practice
+  document.getElementById('reward-continue-btn').onclick = () => {
+    document.getElementById('reward-iframe').src = '';
+    document.getElementById('reward-continue-btn').onclick = null;
+    state.selectedTables = [];
+    showScreen('screen-setup');
+    refreshSetup();
+  };
 }
 
 
@@ -907,6 +927,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Test results screen
+  document.getElementById('test-reward-btn').addEventListener('click', showPerfectTestReward);
   document.getElementById('test-again-btn').addEventListener('click', startTest);
   document.getElementById('test-back-btn').addEventListener('click', () => {
     state.selectedTables = [];
