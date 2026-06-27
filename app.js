@@ -29,6 +29,14 @@ const state = {
 
   locked:          false,        // prevents double-submission during feedback
   pendingReward:   null,         // a CONFIG.rewardTiers entry waiting to be shown
+
+  // Test mode
+  inTestMode:      false,
+  testTimer:       null,
+  testTimeLeft:    0,            // ticks remaining (each tick = 100ms)
+  testCorrect:     0,
+  testTotal:       0,
+  testTimedOut:    false,        // true when the timer expired (not a typed wrong answer)
 };
 
 
@@ -130,6 +138,21 @@ function unlockReward(tier) {
 
 
 // ═══════════════════════════════════════
+// REWARD PROGRESS
+// ═══════════════════════════════════════
+function getNextRewardProgress() {
+  const { points, rewards } = loadLifetime();
+  const nextTier = CONFIG.rewardTiers.find(t => !rewards.includes(t.id));
+  if (!nextTier) return null;
+  return {
+    tier: nextTier,
+    points,
+    pct: Math.min(100, Math.round((points / nextTier.pointsRequired) * 100)),
+  };
+}
+
+
+// ═══════════════════════════════════════
 // SCREEN SWITCHING
 // ═══════════════════════════════════════
 function showScreen(id) {
@@ -220,13 +243,17 @@ function buildTablePicker() {
         state.selectedTables.splice(idx, 1);
         btn.classList.remove('selected');
       }
-      document.getElementById('start-btn').disabled = state.selectedTables.length === 0;
+      const none = state.selectedTables.length === 0;
+      document.getElementById('start-btn').disabled = none;
+      document.getElementById('test-btn').disabled  = none;
     });
 
     picker.appendChild(btn);
   }
 
-  document.getElementById('start-btn').disabled = state.selectedTables.length === 0;
+  const none = state.selectedTables.length === 0;
+  document.getElementById('start-btn').disabled = none;
+  document.getElementById('test-btn').disabled  = none;
 }
 
 function refreshLifetimeDisplay() {
@@ -241,6 +268,17 @@ function refreshLifetimeDisplay() {
     : null;
   document.getElementById('ls-best-session').textContent =
     bestSession !== null ? `${bestSession} pts` : '—';
+
+  const progress    = getNextRewardProgress();
+  const progressEl  = document.getElementById('reward-progress');
+  if (progress) {
+    document.getElementById('reward-progress-label').textContent =
+      `${progress.tier.emoji} Next reward: ${progress.tier.name} — ${progress.points} / ${progress.tier.pointsRequired} pts`;
+    document.getElementById('reward-progress-fill').style.width = progress.pct + '%';
+    progressEl.classList.remove('hidden');
+  } else {
+    progressEl.classList.add('hidden');
+  }
 }
 
 function buildBadgeRow() {
@@ -318,18 +356,23 @@ function showQuestion() {
   }
 
   if (state.deck.length === 0) {
-    handleDeckComplete();
+    if (state.inTestMode) showTestResults();
+    else handleDeckComplete();
     return;
   }
 
   const q = state.deck[0];
   state.currentQuestion = q;
   state.locked = false;
+  state.testTimedOut = false;
 
   document.getElementById('question-text').textContent = `${q.a} × ${q.b} = ?`;
   hideFeedback();
 
-  if (state.mode === 'easy') {
+  if (state.inTestMode) {
+    showHardMode();
+    startTestTimer();
+  } else if (state.mode === 'easy') {
     showEasyMode(q.answer);
   } else {
     showHardMode();
@@ -403,6 +446,7 @@ function checkAnswer() {
 
 function processAnswer(isCorrect) {
   state.locked = true;
+  clearTestTimer();
   const q = state.currentQuestion;
 
   // Track which tables were practiced
@@ -412,6 +456,28 @@ function processAnswer(isCorrect) {
   state.deck.shift();
 
   state.sessionTotal++;
+
+  // ── Test mode: no points, no streak, no re-insertion ──
+  if (state.inTestMode) {
+    if (isCorrect) {
+      state.testCorrect++;
+      state.sessionCorrect++;
+      showFeedback('correct', pickCorrectMessage());
+    } else {
+      const msg = state.testTimedOut
+        ? `⏱ Time's up! The answer was ${q.answer}`
+        : `Not quite — the answer is ${q.answer}`;
+      showFeedback('wrong', msg);
+    }
+    updateSessionStats(loadLifetime().points);
+    const delay = isCorrect ? 600 : 1500;
+    setTimeout(() => {
+      if (state.deck.length === 0) showTestResults();
+      else showQuestion();
+    }, delay);
+    return;
+  }
+
   const lifetime      = loadLifetime();
   const pointsBefore  = lifetime.points;
   lifetime.total++;
@@ -579,9 +645,18 @@ function showReward(tier) {
 
   const videoWrapper = document.getElementById('reward-video-wrapper');
   if (tier.videoFile) {
-    document.getElementById('reward-video-src').src = tier.videoFile;
-    document.getElementById('reward-video').load();
-    videoWrapper.classList.remove('hidden');
+    // Probe whether the file exists before showing the player
+    fetch(tier.videoFile, { method: 'HEAD' })
+      .then(r => {
+        if (r.ok) {
+          document.getElementById('reward-video-src').src = tier.videoFile;
+          document.getElementById('reward-video').load();
+          videoWrapper.classList.remove('hidden');
+        } else {
+          videoWrapper.classList.add('hidden');
+        }
+      })
+      .catch(() => videoWrapper.classList.add('hidden'));
   } else {
     videoWrapper.classList.add('hidden');
   }
@@ -651,6 +726,98 @@ function formatDate(dateStr) {
 
 
 // ═══════════════════════════════════════
+// TEST MODE TIMER
+// ═══════════════════════════════════════
+function startTestTimer() {
+  clearTestTimer();
+  state.testTimeLeft = 60; // 60 × 100ms = 6 seconds
+  updateTimerBar(60);
+  state.testTimer = setInterval(() => {
+    state.testTimeLeft--;
+    updateTimerBar(state.testTimeLeft);
+    if (state.testTimeLeft <= 0) {
+      clearTestTimer();
+      if (!state.locked) {
+        state.testTimedOut = true;
+        processAnswer(false);
+      }
+    }
+  }, 100);
+}
+
+function clearTestTimer() {
+  if (state.testTimer) {
+    clearInterval(state.testTimer);
+    state.testTimer = null;
+  }
+}
+
+function updateTimerBar(ticks) {
+  const fill = document.getElementById('test-timer-fill');
+  fill.style.width = (ticks / 60 * 100) + '%';
+  if      (ticks > 30) fill.style.background = '#16a34a';
+  else if (ticks > 15) fill.style.background = '#f97316';
+  else                 fill.style.background = '#dc2626';
+}
+
+
+// ═══════════════════════════════════════
+// START TEST SESSION
+// ═══════════════════════════════════════
+function startTest() {
+  state.inTestMode     = true;
+  state.testCorrect    = 0;
+  state.testTimedOut   = false;
+  state.sessionTotal   = 0;
+  state.sessionCorrect = 0;
+  state.sessionStreak  = 0;
+  state.sessionPoints  = 0;
+  state.sessionSaved   = false;
+  state.masteredSet    = new Set();
+  state.sessionTables  = new Set();
+  state.pendingReward  = null;
+
+  const fullDeck   = buildDeck();
+  state.deck       = fullDeck.slice(0, CONFIG.testQuestionsCount);
+  state.testTotal  = state.deck.length;
+
+  document.getElementById('mode-badge').textContent =
+    `🏫 School Test · ${state.testTotal} questions · 6 secs each`;
+  document.getElementById('test-timer-bar').classList.remove('hidden');
+
+  updateSessionStats(loadLifetime().points);
+  showScreen('screen-practice');
+  showQuestion();
+}
+
+
+// ═══════════════════════════════════════
+// TEST RESULTS
+// ═══════════════════════════════════════
+function showTestResults() {
+  clearTestTimer();
+  document.getElementById('test-timer-bar').classList.add('hidden');
+  state.inTestMode = false;
+
+  const score = state.testCorrect;
+  const total = state.testTotal;
+  const pct   = total > 0 ? Math.round((score / total) * 100) : 0;
+
+  document.getElementById('test-score').textContent = `${score} / ${total}`;
+  document.getElementById('test-pct').textContent   = `${pct}%`;
+
+  let message;
+  if      (pct >= 90) message = '🌟 Outstanding! Your teacher will be so impressed!';
+  else if (pct >= 75) message = '🎉 Really good work! Keep practising!';
+  else if (pct >= 50) message = '💪 Good effort! A bit more practice and you\'ll smash it!';
+  else                message = '😊 Keep practising — you\'ll get there!';
+
+  document.getElementById('test-message').textContent = message;
+  showScreen('screen-test-result');
+}
+
+
+// ═══════════════════════════════════════
 // START PRACTICE SESSION
 // ═══════════════════════════════════════
 function startPractice() {
@@ -677,6 +844,9 @@ function startPractice() {
 // BACK TO SETUP (save session first)
 // ═══════════════════════════════════════
 function goToSetup() {
+  clearTestTimer();
+  state.inTestMode = false;
+  document.getElementById('test-timer-bar').classList.add('hidden');
   saveSession();
   state.selectedTables = [];
   showScreen('screen-setup');
@@ -713,6 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Setup screen
   document.getElementById('start-btn').addEventListener('click', startPractice);
+  document.getElementById('test-btn').addEventListener('click', startTest);
 
   document.getElementById('change-name-btn').addEventListener('click', () => {
     showScreen('screen-name');
@@ -741,6 +912,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Scoreboard screen
   document.getElementById('scoreboard-back-btn').addEventListener('click', () => {
+    showScreen('screen-setup');
+    refreshSetup();
+  });
+
+  // Test results screen
+  document.getElementById('test-again-btn').addEventListener('click', startTest);
+  document.getElementById('test-back-btn').addEventListener('click', () => {
+    state.selectedTables = [];
     showScreen('screen-setup');
     refreshSetup();
   });

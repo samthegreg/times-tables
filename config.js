@@ -26,6 +26,10 @@ const CONFIG = {
     hard: { multiplier: 2, tag: 'type it in',   badge: 'Hard mode · ×2 points' },
   },
 
+  // ── TEST MODE ─────────────────────────────────────────
+  // Number of questions per school-style test.
+  testQuestionsCount: 25,
+
   // ── SCORING RULES ─────────────────────────────────────
   // Once a table has a ★ star, correct answers earn half points.
   // This discourages grinding easy, already-mastered tables.
@@ -49,27 +53,30 @@ const CONFIG = {
       name:           'Times Tables Explorer',
       emoji:          '🥉',
       pointsRequired: 50,
-      description:    "You've started your times tables journey!",
+      description:    "Amazing work — you've earned a music video reward! 🎵",
       gradient:       'linear-gradient(135deg, #92400e 0%, #fbbf24 100%)',
-      videoFile:      null,
+      // Drop a video file named bronze-reward.mp4 into the rewards/ folder to activate.
+      videoFile:      'rewards/bronze-reward.mp4',
     },
     {
       id:             'silver',
       name:           'Maths Champion',
       emoji:          '🥈',
       pointsRequired: 150,
-      description:    "You're getting really good at this!",
+      description:    "You're getting really good at this — here's your reward! 🎵",
       gradient:       'linear-gradient(135deg, #374151 0%, #d1d5db 100%)',
-      videoFile:      null,
+      // Drop a video file named silver-reward.mp4 into the rewards/ folder to activate.
+      videoFile:      'rewards/silver-reward.mp4',
     },
     {
       id:             'gold',
       name:           'Grand Master',
       emoji:          '🏆',
       pointsRequired: 400,
-      description:    "You've mastered times tables! Enjoy your special reward.",
+      description:    "You've mastered times tables — enjoy your ultimate reward! 🏆🎵",
       gradient:       'linear-gradient(135deg, #78350f 0%, #fef08a 100%)',
-      videoFile:      'rewards/reward-gold.mp4',
+      // Drop a video file named gold-reward.mp4 into the rewards/ folder to activate.
+      videoFile:      'rewards/gold-reward.mp4',
     },
   ],
 

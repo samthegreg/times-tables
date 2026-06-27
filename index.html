@@ -71,6 +71,7 @@
     <div id="table-picker"></div>
 
     <button id="start-btn" class="btn-primary" disabled>Let's Go!</button>
+    <button id="test-btn" class="btn-test" disabled>🏫 School Test</button>
 
     <!-- Earned reward badges -->
     <div id="badge-row">
@@ -83,6 +84,12 @@
         <span>⭐ <strong id="ls-points">0</strong> pts</span>
         <span>Best session: <strong id="ls-best-session">—</strong></span>
         <button id="scores-btn" class="btn-ghost">📊 Scores</button>
+      </div>
+      <div id="reward-progress" class="hidden">
+        <div id="reward-progress-label"></div>
+        <div id="reward-progress-track">
+          <div id="reward-progress-fill"></div>
+        </div>
       </div>
       <div class="lifetime-row muted">
         All time: <strong id="ls-total">0</strong> answered &nbsp;·&nbsp;
@@ -98,6 +105,11 @@
        SCREEN 3 — PRACTICE
        ══════════════════════════════════════ -->
   <div id="screen-practice" class="screen">
+
+    <!-- Test mode countdown bar — hidden during normal practice -->
+    <div id="test-timer-bar" class="hidden">
+      <div id="test-timer-fill"></div>
+    </div>
 
     <div id="stats-bar">
       <div class="stat-block">
@@ -181,7 +193,24 @@
 
 
   <!-- ══════════════════════════════════════
-       SCREEN 6 — SCOREBOARD
+       SCREEN 6 — TEST RESULTS
+       Shown after a school-style test completes
+       ══════════════════════════════════════ -->
+  <div id="screen-test-result" class="screen">
+    <div id="test-result-card">
+      <div class="test-result-emoji">🏫</div>
+      <h2>Test Complete!</h2>
+      <div id="test-score"></div>
+      <div id="test-pct"></div>
+      <p id="test-message"></p>
+      <button id="test-again-btn" class="btn-primary">Try Again</button>
+      <button id="test-back-btn" class="btn-secondary">← Back to Tables</button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       SCREEN 8 — SCOREBOARD
        Session history
        ══════════════════════════════════════ -->
   <div id="screen-scoreboard" class="screen">
@@ -205,7 +234,7 @@
 
 
   <!-- ══════════════════════════════════════
-       SCREEN 7 — REWARD UNLOCKED
+       SCREEN 9 — REWARD UNLOCKED
        Shown when a points tier is crossed
        ══════════════════════════════════════ -->
   <div id="screen-reward" class="screen">
