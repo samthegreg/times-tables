@@ -575,7 +575,7 @@ function updatePracticeRewardProgress() {
   }
   bar.classList.remove('hidden');
   document.getElementById('practice-reward-label').textContent =
-    `${progress.tier.emoji} ${progress.tier.name}: ${progress.points} / ${progress.tier.pointsRequired} pts`;
+    `${progress.tier.emoji} Next reward at ${progress.tier.pointsRequired} pts — you have ${progress.points} pts`;
   document.getElementById('practice-reward-fill').style.width = progress.pct + '%';
 }
 
