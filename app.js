@@ -29,7 +29,9 @@ const state = {
 
   locked:          false,        // prevents double-submission during feedback
   pendingReward:   null,         // a CONFIG.rewardTiers entry waiting to be shown
-  earnedRewards:   [],           // tier IDs earned this session (resets each session)
+  earnedRewards:   [],           // tier IDs earned this reward run (resets on manual back)
+  rewardProgress:  0,            // cumulative pts for reward bar — persists across mastery completions
+  continueSession: false,        // true when moving to a new table after mastery (not a fresh start)
 
   // Test mode
   inTestMode:      false,
@@ -117,11 +119,11 @@ function saveSession() {
 // Returns the first tier that was just crossed (previous < threshold <= new).
 // Returns null if no new tier was crossed.
 // ═══════════════════════════════════════
-function checkNewReward(previousPoints, newPoints) {
+function checkNewReward(prevRewardProgress, newRewardProgress) {
   for (const tier of CONFIG.rewardTiers) {
     if (!state.earnedRewards.includes(tier.id) &&
-        previousPoints < tier.pointsRequired &&
-        newPoints >= tier.pointsRequired) {
+        prevRewardProgress < tier.pointsRequired &&
+        newRewardProgress >= tier.pointsRequired) {
       return tier;
     }
   }
@@ -139,7 +141,7 @@ function unlockReward(tier) {
 // REWARD PROGRESS
 // ═══════════════════════════════════════
 function getNextRewardProgress() {
-  const points  = state.sessionPoints;
+  const points   = state.rewardProgress;
   const nextTier = CONFIG.rewardTiers.find(t => !state.earnedRewards.includes(t.id));
   if (!nextTier) return null;
   return {
@@ -465,8 +467,8 @@ function processAnswer(isCorrect) {
     return;
   }
 
-  const lifetime          = loadLifetime();
-  const sessionPtsBefore  = state.sessionPoints;
+  const lifetime            = loadLifetime();
+  const prevRewardProgress  = state.rewardProgress;
   lifetime.total++;
 
   if (isCorrect) {
@@ -475,15 +477,16 @@ function processAnswer(isCorrect) {
     state.masteredSet.add(q.key);
 
     const pts = calculatePoints(q.a);
-    state.sessionPoints += pts;
+    state.sessionPoints  += pts;
+    state.rewardProgress += pts;
     lifetime.correct++;
     lifetime.points += pts;
     if (state.sessionStreak > lifetime.best) lifetime.best = state.sessionStreak;
 
     showFeedback('correct', pickCorrectMessage());
 
-    // Check if a reward tier was just crossed (session points only)
-    const newTier = checkNewReward(sessionPtsBefore, state.sessionPoints);
+    // Check if a reward tier was just crossed (cumulative reward progress)
+    const newTier = checkNewReward(prevRewardProgress, state.rewardProgress);
     if (newTier) {
       unlockReward(newTier);
       state.pendingReward = newTier;
@@ -551,6 +554,7 @@ function handleDeckComplete() {
     detail.textContent   = 'Try a different table to keep improving.';
   }
 
+  state.continueSession = true; // preserve reward progress when picking next table
   showScreen('screen-mastered');
 }
 
@@ -750,18 +754,20 @@ function updateTimerBar(ticks) {
 // START TEST SESSION
 // ═══════════════════════════════════════
 function startTest() {
-  state.inTestMode     = true;
-  state.testCorrect    = 0;
-  state.testTimedOut   = false;
-  state.sessionTotal   = 0;
-  state.sessionCorrect = 0;
-  state.sessionStreak  = 0;
-  state.sessionPoints  = 0;
-  state.sessionSaved   = false;
-  state.masteredSet    = new Set();
-  state.sessionTables  = new Set();
-  state.pendingReward  = null;
-  state.earnedRewards  = [];
+  state.inTestMode      = true;
+  state.testCorrect     = 0;
+  state.testTimedOut    = false;
+  state.continueSession = false;
+  state.rewardProgress  = 0;
+  state.earnedRewards   = [];
+  state.sessionTotal    = 0;
+  state.sessionCorrect  = 0;
+  state.sessionStreak   = 0;
+  state.sessionPoints   = 0;
+  state.sessionSaved    = false;
+  state.masteredSet     = new Set();
+  state.sessionTables   = new Set();
+  state.pendingReward   = null;
 
   const fullDeck   = buildDeck();
   state.deck       = fullDeck.slice(0, CONFIG.testQuestionsCount);
@@ -836,7 +842,13 @@ function startPractice() {
   state.masteredSet    = new Set();
   state.sessionTables  = new Set();
   state.pendingReward  = null;
-  state.earnedRewards  = [];
+
+  if (!state.continueSession) {
+    // Fresh start — reset reward progress too
+    state.rewardProgress = 0;
+    state.earnedRewards  = [];
+  }
+  state.continueSession = false;
 
   document.getElementById('mode-badge').textContent =
     CONFIG.modes[state.mode].badge;
@@ -853,9 +865,16 @@ function startPractice() {
 // ═══════════════════════════════════════
 function goToSetup() {
   clearTestTimer();
-  state.inTestMode    = false;
-  state.earnedRewards = [];
+  state.inTestMode = false;
   document.getElementById('test-timer-bar').classList.add('hidden');
+
+  if (!state.continueSession) {
+    // Manual back — start fresh, reward progress resets
+    state.rewardProgress = 0;
+    state.earnedRewards  = [];
+  }
+  // If continueSession, reward progress and earnedRewards carry over to next table pick
+
   saveSession();
   state.selectedTables = [];
   showScreen('screen-setup');
